@@ -1,0 +1,28 @@
+{
+    "name": "hp/ai-enabled-bidding-system",
+    "description": "A WordPress plugin for an AI-enabled construction bidding system.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "Hp\\AiEnabledBiddingSystem\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Abat Chan",
+            "email": "akinyughababajide@gmail.com"
+        }
+    ],
+    "require": {
+        "openai-php/client": "^0.10.1",
+        "symfony/http-client": "^7.1",
+        "nyholm/psr7": "^1.8",
+        "smalot/pdfparser": "^2.10"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}
