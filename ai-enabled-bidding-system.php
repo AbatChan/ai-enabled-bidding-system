@@ -9,7 +9,7 @@
  * GitHub Plugin URI: https://github.com/AbatChan/ai-enabled-bidding-system
  * GitHub Branch: main
  * License: GPL-2.0-or-later
-*/
+ */
 
 // Exit if accessed directly
 if (!defined('ABSPATH')) {
@@ -41,7 +41,6 @@ function run_ai_enabled_bidding_system() {
     new AI_Enabled_Bidding_System_Shortcode();
 
     $admin = new AI_Enabled_Bidding_System_Admin($plugin->get_plugin_name(), $plugin->get_version());
-    // These actions are now added only once
     add_action('admin_menu', array($admin, 'add_plugin_settings_page'));
     add_action('admin_init', array($admin, 'register_settings'));
 
