@@ -11,6 +11,7 @@ const AIEnabledBiddingSystem = () => {
     email: '',
     companyLocation: '',
     projectAddress: '',
+    projectType: '',
     constructionField: '',
     emailOffers: false
   });
@@ -24,15 +25,35 @@ const AIEnabledBiddingSystem = () => {
   const { toPDF, targetRef } = usePDF({filename: 'generated_bid.pdf'});
 
   useEffect(() => {
-    const storedBids = localStorage.getItem('savedBids');
-    if (storedBids) {
-      setSavedBids(JSON.parse(storedBids));
-    }
+    fetchSavedBids();
   }, []);
+
+  const fetchSavedBids = async () => {
+    try {
+      const response = await fetch(aiebsData.ajaxUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'aiebs_get_user_bids',
+          nonce: aiebsData.nonce,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSavedBids(data.data);
+      } else {
+        console.error('Failed to fetch saved bids:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching saved bids:', error);
+    }
+  };
 
   const validateFile = (file) => {
     if (!file) return null;
-    if (file.size > 2 * 1024 * 1024) return 'File size exceeds 2MB limit';
+    if (file.size > 100 * 1024 * 1024) return 'File size exceeds 100MB limit';
     if (!['application/pdf'].includes(file.type)) return 'Only PDF files are allowed';
     return null;
   };
@@ -71,6 +92,9 @@ const AIEnabledBiddingSystem = () => {
       case 'projectAddress':
         if (isEmpty(value)) error = 'Project Address is required';
         break;
+      case 'projectType':
+        if (isEmpty(value)) error = 'Project Type is required';
+        break;
       case 'constructionField':
         if (isEmpty(value)) error = 'Field of Construction is required';
         break;
@@ -86,7 +110,7 @@ const AIEnabledBiddingSystem = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const requiredFields = ['email', 'companyLocation', 'projectAddress', 'constructionField'];
+    const requiredFields = ['email', 'companyLocation', 'projectAddress', 'projectType', 'constructionField'];
     
     requiredFields.forEach(field => {
       if (isEmpty(formData[field])) {
@@ -106,6 +130,27 @@ const AIEnabledBiddingSystem = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleError = (error) => {
+    console.error('Error:', error);
+    let errorMessage = 'An unexpected error occurred. Please try again later.';
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage = 'The requested resource could not be found. Please check your input and try again.';
+      } else if (error.response.status === 403) {
+        errorMessage = 'You do not have permission to access this resource. Please contact support if you believe this is an error.';
+      } else if (error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      }
+    } else if (error.request) {
+      errorMessage = 'No response received from the server. Please check your internet connection and try again.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+  
+    setErrors(prev => ({ ...prev, submit: errorMessage }));
   };
 
   const handleSubmit = async (event) => {
@@ -165,24 +210,38 @@ const AIEnabledBiddingSystem = () => {
       } else {
         throw new Error(data.data?.message || 'An unknown error occurred');
       }
+    // Update the catch block in handleSubmit function
     } catch (error) {
-      console.error('Error generating bid:', error);
-      setErrors(prev => ({ ...prev, submit: `An error occurred while generating the bid: ${error.message}` }));
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSaveBid = () => {
+  const handleSaveBid = async () => {
     if (generatedBid) {
-      const isDuplicate = savedBids.some(bid => bid.id === generatedBid.id);
-      if (!isDuplicate) {
-        const updatedBids = [...savedBids, generatedBid];
-        setSavedBids(updatedBids);
-        localStorage.setItem('savedBids', JSON.stringify(updatedBids));
-        alert('Bid saved successfully!');
-      } else {
-        alert('This bid has already been saved.');
+      try {
+        const response = await fetch(aiebsData.ajaxUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            action: 'aiebs_save_bid',
+            nonce: aiebsData.nonce,
+            bid: JSON.stringify(generatedBid),
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert('Bid saved successfully!');
+          fetchSavedBids(); // Refresh the list of saved bids
+        } else {
+          alert('Failed to save bid: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Error saving bid:', error);
+        alert('An error occurred while saving the bid.');
       }
     }
   };
@@ -216,7 +275,7 @@ const AIEnabledBiddingSystem = () => {
                               file:bg-blue-50 file:text-blue-700
                               hover:file:bg-blue-100"
                   />
-                  <p className="text-xs mt-1 text-gray-400">Max: 2 MB, PDF only</p>
+                  <p className="text-xs mt-1 text-gray-400">Max: 100 MB, PDF only</p>
                   {errors.planSet && <p className="mt-2 text-sm text-red-600">{errors.planSet}</p>}
                 </div>
                 <div>
@@ -231,7 +290,7 @@ const AIEnabledBiddingSystem = () => {
                               file:bg-blue-50 file:text-blue-700
                               hover:file:bg-blue-100"
                   />
-                  <p className="text-xs mt-1 text-gray-400">Max: 2 MB, PDF only</p>
+                  <p className="text-xs mt-1 text-gray-400">Max: 100 MB, PDF only</p>
                   {errors.priceReferenceSheet && <p className="mt-2 text-sm text-red-600">{errors.priceReferenceSheet}</p>}
                 </div>
               </div>
@@ -247,7 +306,7 @@ const AIEnabledBiddingSystem = () => {
                             file:bg-blue-50 file:text-blue-700
                             hover:file:bg-blue-100"
                 />
-                <p className="text-xs mt-1 text-gray-400">Max: 2 MB, PDF only</p>
+                <p className="text-xs mt-1 text-gray-400">Max: 100 MB, PDF only</p>
                 {errors.supportingDocs && <p className="mt-2 text-sm text-red-600">{errors.supportingDocs}</p>}
               </div>
               <div>
@@ -309,25 +368,47 @@ const AIEnabledBiddingSystem = () => {
                 />
                 {errors.projectAddress && <p className="mt-2 text-sm text-red-600">{errors.projectAddress}</p>}
               </div>
-              <div>
-                <label htmlFor="constructionField" className="block text-sm font-medium text-gray-700">Field of Construction</label>
-                <select
-                  id="constructionField"
-                  name="constructionField"
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    errors.constructionField ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  value={formData.constructionField}
-                  onChange={handleInputChange}
-                  onBlur={() => validateField('constructionField', formData.constructionField)}
-                >
-                  <option value="">Select a field</option>
-                  <option value="residential">Residential</option>
-                  <option value="commercial">Commercial</option>
-                  <option value="industrial">Industrial</option>
-                  <option value="demolition">Demolition</option>
-                </select>
-                {errors.constructionField && <p className="mt-2 text-sm text-red-600">{errors.constructionField}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="projectType" className="block text-sm font-medium text-gray-700">Project Type</label>
+                  <select
+                    id="projectType"
+                    name="projectType"
+                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                      errors.projectType ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.projectType}
+                    onChange={handleInputChange}
+                    onBlur={() => validateField('projectType', formData.projectType)}
+                  >
+                    <option value="">Select a project type</option>
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="industrial">Industrial</option>
+                  </select>
+                  {errors.projectType && <p className="mt-2 text-sm text-red-600">{errors.projectType}</p>}
+                </div>
+                <div>
+                  <label htmlFor="constructionField" className="block text-sm font-medium text-gray-700">Field of Construction</label>
+                  <select
+                    id="constructionField"
+                    name="constructionField"
+                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                      errors.constructionField ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.constructionField}
+                    onChange={handleInputChange}
+                    onBlur={() => validateField('constructionField', formData.constructionField)}
+                  >
+                    <option value="">Select a field</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="framing">Framing</option>
+                    <option value="flooring">Flooring</option>
+                    <option value="demolition">Demolition</option>
+                  </select>
+                  {errors.constructionField && <p className="mt-2 text-sm text-red-600">{errors.constructionField}</p>}
+                </div>
               </div>
               <div className="flex items-center">
                 <input
@@ -373,11 +454,13 @@ const AIEnabledBiddingSystem = () => {
                 {selectedSavedBid ? 'Saved Bid Details' : 'Generated Bid'}
               </h2>
               <div className="space-y-4">
-                <p><strong>Project Name:</strong> {(selectedSavedBid || generatedBid).projectName}</p>
-                <p><strong>Company Name:</strong> {(selectedSavedBid || generatedBid).companyName}</p>
+                <p><strong>Project Name:</strong> {(selectedSavedBid || generatedBid).project_name}</p>
+                <p><strong>Company Name:</strong> {(selectedSavedBid || generatedBid).company_name}</p>
                 <p><strong>Location:</strong> {(selectedSavedBid || generatedBid).location}</p>
                 <p><strong>Timeframe:</strong> {(selectedSavedBid || generatedBid).timeframe}</p>
                 <p><strong>Description:</strong> {(selectedSavedBid || generatedBid).description}</p>
+                <p><strong>Project Type:</strong> {(selectedSavedBid || generatedBid).project_type}</p>
+                <p><strong>Construction Field:</strong> {(selectedSavedBid || generatedBid).construction_field}</p>
                 <div>
                   <h3 className="font-bold text-lg mt-4 mb-2">Line Items:</h3>
                   <ul className="list-disc pl-5 space-y-2">
@@ -424,13 +507,13 @@ const AIEnabledBiddingSystem = () => {
               <h2 className="text-xl font-bold mb-4">Saved Bids</h2>
               <div className="max-h-60 overflow-y-auto mb-4">
                 <ul className="space-y-2">
-                  {savedBids.map((bid, index) => (
+                  {savedBids.map((bid) => (
                     <li 
-                      key={index} 
+                      key={bid.id} 
                       className="bg-gray-100 p-4 rounded cursor-pointer hover:bg-gray-200"
                       onClick={() => handleSavedBidClick(bid)}
                     >
-                      {bid.projectName} - {bid.location}
+                      {bid.project_name} - {bid.location}
                     </li>
                   ))}
                 </ul>

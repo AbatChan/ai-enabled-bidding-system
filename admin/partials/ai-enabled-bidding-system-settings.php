@@ -1,6 +1,6 @@
 <div class="wrap">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-    <form action="options.php" method="post">
+    <form action="options.php" method="post" enctype="multipart/form-data">
         <?php
         settings_fields('ai_bidding_settings');
         do_settings_sections('ai_bidding_settings');
@@ -34,6 +34,19 @@
                 <td>
                     <input type="text" id="aiebs_dashboard_slug" name="aiebs_dashboard_slug" value="<?php echo esc_attr(get_option('aiebs_dashboard_slug', 'bidding-dashboard')); ?>" class="regular-text">
                     <p class="description">Enter the slug for the page where your bidding dashboard is located.</p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="aiebs_logo">Company Logo</label></th>
+                <td>
+                    <?php
+                    $logo_url = get_option('aiebs_logo');
+                    if ($logo_url) {
+                        echo '<img src="' . esc_url($logo_url) . '" style="max-width: 200px; height: auto;" /><br>';
+                    }
+                    ?>
+                    <input type="file" id="aiebs_logo" name="aiebs_logo" accept="image/*">
+                    <p class="description">Upload your company logo (max size: 2MB).</p>
                 </td>
             </tr>
         </table>

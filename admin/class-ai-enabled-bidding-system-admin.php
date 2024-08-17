@@ -32,6 +32,18 @@ class AI_Enabled_Bidding_System_Admin {
         register_setting('ai_bidding_settings', 'aiebs_max_tokens');
         register_setting('ai_bidding_settings', 'aiebs_temperature');
         register_setting('ai_bidding_settings', 'aiebs_dashboard_slug');
+        register_setting('ai_bidding_settings', 'aiebs_logo', array($this, 'handle_logo_upload'));
+    }
+
+    public function handle_logo_upload($option) {
+        if (!empty($_FILES["aiebs_logo"]["tmp_name"])) {
+            $urls = wp_handle_upload($_FILES["aiebs_logo"], array('test_form' => FALSE));
+            if ($urls["error"]) {
+                return $option;
+            }
+            return $urls["url"];
+        }
+        return $option;
     }
 
     public function render_settings_page() {

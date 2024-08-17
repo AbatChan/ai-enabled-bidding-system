@@ -16,6 +16,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!function_exists('idn_to_ascii')) {
+    function idn_to_ascii($domain, $options = 0, $variant = 0, &$idn_info = array()) {
+        return AI_Enabled_Bidding_System_Public::idn_to_ascii_fallback($domain);
+    }
+}
+
 // Define plugin constants
 define('AIEBS_VERSION', '1.0.0');
 define('AIEBS_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -63,6 +69,12 @@ add_action('wp_ajax_nopriv_aiebs_generate_bid', array('AI_Enabled_Bidding_System
 add_action('wp_ajax_aiebs_get_user_bids', array('AI_Enabled_Bidding_System_Public', 'get_user_bids'));
 add_action('wp_ajax_aiebs_delete_bid', array('AI_Enabled_Bidding_System_Public', 'delete_bid'));
 add_action('wp_ajax_aiebs_update_bid_status', array('AI_Enabled_Bidding_System_Public', 'update_bid_status'));
+add_action('wp_ajax_aiebs_save_bid', array('AI_Enabled_Bidding_System_Public', 'save_bid'));
+add_action('wp_ajax_nopriv_aiebs_save_bid', array('AI_Enabled_Bidding_System_Public', 'save_bid'));
+add_action('wp_ajax_nopriv_aiebs_register_user', array('AI_Enabled_Bidding_System_Public', 'register_user'));
+
+// Add this line to your main plugin file
+add_action('plugins_loaded', array('AI_Enabled_Bidding_System_Public', 'update_db_check'));
 
 // Enqueue scripts and styles
 function aiebs_enqueue_scripts() {
@@ -76,3 +88,9 @@ function aiebs_enqueue_scripts() {
     ));
 }
 add_action('wp_enqueue_scripts', 'aiebs_enqueue_scripts');
+
+function aiebs_enqueue_custom_styles() {
+    wp_enqueue_style('aiebs-custom-styles', plugins_url('css/index.css', __FILE__));
+}
+add_action('wp_enqueue_scripts', 'aiebs_enqueue_custom_styles');
+add_shortcode('ai_bidding_dashboard', array('AI_Enabled_Bidding_System_Public', 'render_dashboard'));
